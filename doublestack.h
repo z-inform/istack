@@ -20,30 +20,6 @@ int push(struct Stack *stk, double val);
 int delStack(struct Stack *stk);
 int pop(struct Stack *stk, double *val);
 
-int main(){
-
-    struct Stack stk = {};
-    double val = 0;
-
-    initStackSize(&stk, 10);
-    dumpStack(stk);
-
-    push(&stk, 20);
-    push(&stk, 11);
-
-    pop(&stk, &val);
-    printf("popped: %lg\n", val);
-    dumpStack(stk);
-    pop(&stk, &val);
-    printf("popped: %lg\n", val);
-
-    dumpStack(stk);
-    delStack(&stk);
-
-
-    return 0;
-}
-
 int pop(struct Stack *stk, double *val){
 
     if( checkStack(*stk) != 0) return checkStack(*stk);
