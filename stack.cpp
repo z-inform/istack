@@ -56,14 +56,16 @@ Stack::~Stack(){
 void Stack::pop(void* ptr){
     this -> checkStack();
 
-    if( this -> currentSize != 0 ){
+    if( this -> currentSize > 0 ){
         uint8_t* charptr = (uint8_t*) ptr;
-
         for(int i = 0; i < (this -> elSize); i++){
-            *(charptr + i) = *( (uint8_t*) (this -> begPointer) + i);  
+            *(charptr + i) = *( (uint8_t*) ((this -> begPointer) + (this -> currentSize - 1) * (this -> elSize) + i));  
         }
+        fillPoison((this -> begPointer) + (this -> currentSize - 1) * (this -> elSize));
+        (this -> currentSize)--;        
     }
     else throw EMPTYPOP;    
+
     this  -> checkStack();
 
 }
@@ -114,12 +116,12 @@ void Stack::dump(){
             case BADMAXSZ:   printf("Max stack size (max number of elements) below or equals zero;\n"); break;
         }
     }
-        
+*/        
     printf("\nStruct dump:\n");
     printf("\tPointer on stack beginning:\t%p\n", this -> begPointer);
     printf("\tCurrent stack size:\t        %d\n", this -> currentSize);
     printf("\tMax stack size:\t  \t        %d\n", this -> maxSize);
-
+/*
     if( this -> errCode != 0 ){
         printf("\nStack cannot be trusted and contents will not be displayed to avoid SEGFAULT\n");
     }
