@@ -6,7 +6,6 @@
 #define BADCURSZ 2
 #define BADMAXSZ 3
 #define EMPTYPOP 4
-#define POISON 0xEEEEEEEE
 
 
 Stack::Stack(int _elSize):
@@ -63,11 +62,8 @@ void Stack::pop(void* ptr){
             *(charptr + i) = *( (uint8_t*) (this -> begPointer) + i);  
         }
     }
-
     else throw EMPTYPOP;    
     this  -> checkStack();
-
-    }
 
 }
 
@@ -140,7 +136,6 @@ void Stack::dump(){
         if( checkPoison((this -> begPointer) + i*(this -> elSize)) == 1  ) printf(" : POISON\n");
         else printf("\n");    
     }
-}
     printf("----------------------------------------------------\n");
 }
 
