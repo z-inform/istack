@@ -33,6 +33,7 @@ int main(){
     }*/
 
     for(int i = 0; i < 50; i++) tryNorm();
+    for(int i = 0; i < 50; i++) tryPop();
 
     return 0;
 }
@@ -61,6 +62,27 @@ int tryNorm(){
     }
     catch(int exc){
         printf("Caught exception [%d]\n", exc);
+    }
+    return 0;
+}
+
+int tryPop(){
+    try{
+    double val = 0;
+    int max = 10;
+    Stack stk(sizeof(double));
+    int cycles = rand() % max + 1;
+    
+    for(int i = 0; i < cycles; i++){
+        val = rand() / (rand() + 1);
+        stk.push(&val);
+    }
+
+    for(int i = 0; i < cycles + 5; i++) stk.pop(&val);
+    }
+    catch(int exc){
+        if( exc != EMPTYPOP ) printf("Multiple pops caught an unexpected exception [%d]\n", exc);
+        return 1;
     }
     return 0;
 }
