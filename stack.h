@@ -10,12 +10,13 @@
 #define POISON 0xEEEEEEEE
 
 class Stack{
+    uint64_t canaryStat1;
     void* begPointer;
     int elSize;
     int currentSize;
     int maxSize;
     uint64_t poison;
-    int errCode;
+    uint64_t canaryStat2;
 
     void checkStack();
     int checkPoison(void* ptr);
@@ -28,9 +29,7 @@ class Stack{
     ~Stack();
 
     void dump();
-    int getErr(){
-        return errCode;
-    }
+    int decodeErr(int err);
     void push(void* ptr);
     void pop(void* ptr);
 };
