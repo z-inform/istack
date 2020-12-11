@@ -22,11 +22,14 @@ Stack::Stack(int _elSize):
     maxSize(1),
     poison(0xEEEEEEEEEEEEEEEE),
     canaryStat2(canaryVal) {
-        begPointer = calloc(1, _elSize);
+        begPointer = malloc( (16 + _elSize) + (8 - _elSize % 8));
         if( begPointer == nullptr ){
             throw BADPTR;
         }
         else{
+            *(uint64_t*) begPointer = canaryVal;
+            *(uint64_t*) (begPointer + 8 + _elSize + ( 8 -  _elSize % 8 )) = canaryVal;
+            begPointer += 8;
             fillPoison(begPointer);
         }
 }
@@ -39,11 +42,14 @@ Stack::Stack(int _elSize, int _maxSize):
     maxSize(_maxSize),
     poison(0xEEEEEEEEEEEEEEEE),
     canaryStat2(canaryVal) {
-        begPointer = calloc(_maxSize, _elSize);
+        begPointer = malloc(_maxSize * _elSize + 16 + (8 - (_maxSize * _elSize) % 8));
         if( begPointer == nullptr ){
             throw BADPTR;
         }
         else{
+            *(uint64_t*) begPointer = canaryVal;
+            *(uint64_t*) (begPointer + 8 + _maxSize * _elSize + (8 - (_maxSize * _elSize) % 8)) = canaryVal;
+            begPointer += 8;
             for(int i = 0; i < _maxSize; i++) fillPoison(begPointer + i*_elSize);
         }
 }
