@@ -18,7 +18,6 @@ class Stack{
     uint64_t poison;
     uint64_t canaryStat2;
 
-    void checkStack();
     int checkPoison(void* ptr);
     void fillPoison(void* ptr);
     
@@ -29,6 +28,7 @@ class Stack{
     ~Stack();
 
     void dump();
+    void checkStack();
     int decodeErr(int err);
     void push(void* ptr);
     void pop(void* ptr);
