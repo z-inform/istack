@@ -27,9 +27,8 @@ Stack::Stack(int _elSize):
             throw BADPTR;
         }
         else{
-            *(uint64_t*) begPointer = canaryVal;
-            *(uint64_t*) (begPointer + 8 + _elSize + ( 8 -  _elSize % 8 )) = canaryVal;
             begPointer += 8;
+            fillCanary();
             fillPoison(begPointer);
         }
 }
@@ -47,9 +46,9 @@ Stack::Stack(int _elSize, int _maxSize):
             throw BADPTR;
         }
         else{
-            *(uint64_t*) begPointer = canaryVal;
-            *(uint64_t*) (begPointer + 8 + _maxSize * _elSize + (8 - (_maxSize * _elSize) % 8)) = canaryVal;
             begPointer += 8;
+            fillCanary();
+            //printf("begPointer: %lld\nnewPointer: %lld\nSize: %d\n", begPointer, begPointer + _maxSize * _elSize + (8 - (_maxSize * _elSize) % 8), _maxSize * _elSize + 16 + (8 - (_maxSize * _elSize) % 8));
             for(int i = 0; i < _maxSize; i++) fillPoison(begPointer + i*_elSize);
         }
 }
@@ -60,6 +59,11 @@ Stack::~Stack(){
         begPointer = (void*) -1;
         currentSize = 0;
         maxSize = 0;
+}
+
+void Stack::fillCanary(){
+    *(uint64_t*) (this -> begPointer - 8) = canaryVal;
+    *(uint64_t*) (this -> begPointer + maxSize * elSize + (8 - (maxSize * elSize) % 8)) = canaryVal;
 }
 
 void Stack::pop(void* ptr){
@@ -84,10 +88,12 @@ void Stack::push(void* ptr){
     this -> checkStack();
 
     if( (this -> currentSize) >= (this -> maxSize) - 2 ){
-        this -> begPointer = realloc(this -> begPointer, 2 * (this -> maxSize) * (this -> elSize));
+        this -> begPointer = realloc(this -> begPointer - 8, 2 * (this -> maxSize) * (this -> elSize) + 16 + (8 - (2 * (this -> elSize) * (this -> maxSize) % 8)));
         if( (this -> begPointer == nullptr) ) throw BADPTR;
-
+        
         this -> maxSize = 2 * (this -> maxSize);
+        begPointer += 8;
+        fillCanary();
 
         for(int i = (this -> currentSize); i < (this -> maxSize); i++){
             fillPoison(begPointer + i * (this -> elSize));
@@ -149,6 +155,9 @@ void Stack::dump(){
 
 void Stack::checkStack(){
     if( (this -> begPointer == (void*) -1) || (this -> begPointer == NULL) ) throw BADPTR;
+    else if( *(uint64_t*)(this -> begPointer - 8) != canaryVal ) throw CANVALS1;
+    else if( *(uint64_t*)(this -> begPointer + (this -> elSize) * (this -> maxSize) + (8 - (((this -> elSize) * (this -> maxSize)) % 8))) != canaryVal) throw CANVALS2;
+    else if( this -> canaryStat1 != canaryVal ) throw CANST1;
     else if( this -> canaryStat1 != canaryVal ) throw CANST1;
     else if( this -> canaryStat2 != canaryVal ) throw CANST2;
     else if( (this -> currentSize < 0) || (this -> currentSize > this -> maxSize) ) throw BADCURSZ;
@@ -168,9 +177,6 @@ void Stack::fillPoison(void* ptr){
         *(charptr + i) = (this -> poison) << (7 - i) * 8 >> 56;
     }
 }
-
-
-
 
 
 

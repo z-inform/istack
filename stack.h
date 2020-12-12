@@ -3,12 +3,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define BADPTR 1
-#define BADCURSZ 2
-#define BADMAXSZ 3
-#define EMPTYPOP 4
-#define POISON 0xEEEEEEEE
-
 class Stack{
     uint64_t canaryStat1;
     void* begPointer;
@@ -20,6 +14,7 @@ class Stack{
 
     int checkPoison(void* ptr);
     void fillPoison(void* ptr);
+    void fillCanary();
     
     public:
 
@@ -34,5 +29,9 @@ class Stack{
     void pop(void* ptr);
 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-arith"
+
 #include "stack.cpp"
 
+#pragma GCC diagnostic pop
