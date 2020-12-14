@@ -23,6 +23,7 @@ class Stack{
     ~Stack();
 
     void dump();
+    void setPoison(uint64_t _poison);
     void checkStack();
     int decodeErr(int err);
     void push(void* ptr);
