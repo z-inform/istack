@@ -61,9 +61,32 @@ Stack::Stack(int _elSize, int _maxSize):
             for(int i = 0; i < _maxSize; i++) fillPoison(begPointer + i*_elSize);
             uint32_t newStHash = calcStHash();
             uint32_t newDtHash = calcDtHash();
-            this -> stHash = newStHash;
-            this -> dtHash = newDtHash;
+            stHash = newStHash;
+            dtHash = newDtHash;
         }
+}
+
+Stack& Stack::operator=(Stack& arg){
+    this -> canaryStat1 = arg.canaryStat1;
+    free(this -> begPointer);
+    this -> begPointer = malloc(arg.maxSize * arg.elSize + 16 + (8 - (arg.maxSize * arg.elSize) % 8));
+    if(begPointer == NULL) throw BADPTR;
+    else{
+        arg.mvMem(arg.begPointer - 8, arg.maxSize * arg.elSize + 16 + (8 - (arg.maxSize * arg.elSize) % 4), this -> begPointer);
+        this -> begPointer += 8;
+        elSize = arg.elSize;
+        currentSize = arg.currentSize;
+        maxSize = arg.maxSize;
+        poison = arg.poison;
+        canaryStat2 = arg.canaryStat2;
+        stHash = 0;
+        dtHash = 0;
+        uint32_t newStHash = calcStHash();
+        uint32_t newDtHash = calcDtHash();
+        stHash = newStHash;
+        dtHash = newDtHash;
+    }
+    return *this;
 }
 
 void Stack::mvMem(void* src, int size, void* dst){

@@ -7,7 +7,6 @@ int decodeStackErr(int err);
 
 class Stack{
     uint64_t canaryStat1;
-    public:
     void* begPointer;
     int elSize;
     int currentSize;
@@ -29,6 +28,7 @@ class Stack{
     Stack(int _elSize);
     Stack(int _elSize, int _maxSize);
     ~Stack();
+    Stack& operator=(Stack& arg);
 
     void dump();
     void setPoison(uint64_t _poison);
@@ -40,6 +40,8 @@ class Stack{
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpointer-arith"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
 
 #include "stack.cpp"
 
