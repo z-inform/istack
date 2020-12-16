@@ -3,18 +3,26 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+int decodeStackErr(int err);
+
 class Stack{
     uint64_t canaryStat1;
+    public:
     void* begPointer;
     int elSize;
     int currentSize;
     int maxSize;
+    uint32_t stHash;
+    uint32_t dtHash;
     uint64_t poison;
     uint64_t canaryStat2;
 
     int checkPoison(void* ptr);
     void fillPoison(void* ptr);
     void fillCanary();
+    uint32_t calcStHash();
+    uint32_t calcDtHash();
+    void mvMem(void* src, int size, void* dst); 
     
     public:
 

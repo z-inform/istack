@@ -11,6 +11,8 @@
 #define CANST2 6
 #define CANVALS1 7
 #define CANVALS2 8
+#define WRSTHASH 9
+#define WRDTHASH 10
 
 const uint64_t canaryVal = 0xD18AD0B5D18AD18C;
 
@@ -20,6 +22,8 @@ Stack::Stack(int _elSize):
     elSize(_elSize),
     currentSize(0),
     maxSize(1),
+    stHash(0),
+    dtHash(0),
     poison(0xEEEEEEEEEEEEEEEE),
     canaryStat2(canaryVal) {
         begPointer = malloc( (16 + _elSize) + (8 - _elSize % 8));
@@ -30,6 +34,10 @@ Stack::Stack(int _elSize):
             begPointer += 8;
             fillCanary();
             fillPoison(begPointer);
+            uint32_t newStHash = calcStHash();
+            uint32_t newDtHash = calcDtHash();
+            this -> stHash = newStHash;
+            this -> dtHash = newDtHash;
         }
 }
 
@@ -39,6 +47,8 @@ Stack::Stack(int _elSize, int _maxSize):
     elSize(_elSize),
     currentSize(0),
     maxSize(_maxSize),
+    stHash(0),
+    dtHash(0),
     poison(0xEEEEEEEEEEEEEEEE),
     canaryStat2(canaryVal) {
         begPointer = malloc(_maxSize * _elSize + 16 + (8 - (_maxSize * _elSize) % 8));
@@ -49,7 +59,79 @@ Stack::Stack(int _elSize, int _maxSize):
             begPointer += 8;
             fillCanary();
             for(int i = 0; i < _maxSize; i++) fillPoison(begPointer + i*_elSize);
+            uint32_t newStHash = calcStHash();
+            uint32_t newDtHash = calcDtHash();
+            this -> stHash = newStHash;
+            this -> dtHash = newDtHash;
         }
+}
+
+void Stack::mvMem(void* src, int size, void* dst){
+    for(int i = 0; i < size; i++){
+        *( (uint8_t*) dst + i) = *( (uint8_t*) src + i);
+    }
+}
+
+uint32_t Stack::calcStHash(){
+    uint32_t hash = 0;
+    int i = 0;
+    int size = sizeof(this -> begPointer) + sizeof(this -> elSize) + sizeof(this -> maxSize) + sizeof(this -> stHash) + sizeof(this -> dtHash) + sizeof(this -> poison); 
+    size += 4 - (size % 4); 
+    uint32_t* mvPtr = (uint32_t*) calloc(1, size);
+    uint8_t* ptr = (uint8_t*) mvPtr;
+
+    mvMem(&(this -> begPointer), sizeof(this -> begPointer), ptr);
+    ptr += sizeof(this -> begPointer);
+    mvMem(&(this -> elSize), sizeof(this -> elSize), ptr);
+    ptr += sizeof(this -> elSize);
+    mvMem(&(this -> currentSize), sizeof(this -> currentSize), ptr);
+    ptr += sizeof(this -> currentSize);
+    mvMem(&(this -> maxSize), sizeof(this -> maxSize), ptr);
+    ptr += sizeof(this -> maxSize);
+    mvMem(&(this -> stHash), sizeof(this -> stHash), ptr);
+    ptr += sizeof(this -> stHash);
+    mvMem(&(this -> dtHash), sizeof(this -> dtHash), ptr);
+    ptr += sizeof(this -> dtHash);
+    mvMem(&(this -> poison), sizeof(this -> poison), ptr);
+
+
+
+    for(i = 0; i < size / 4; i++){
+        hash += *(mvPtr + i);
+        hash += (hash << 10);
+        hash ^= (hash >> 6);
+    }
+    
+    hash += (hash << 3);
+    hash ^= (hash >> 11);
+    hash += (hash << 15);
+
+    free(mvPtr);
+
+    return hash;
+}
+
+uint32_t Stack::calcDtHash(){
+    uint32_t hash = 0;
+    int i = 0;
+    int size = (this -> elSize) * (this -> maxSize); 
+    size += 4 - (size % 4);
+    uint32_t* ptr = (uint32_t*) calloc(1, size);
+    mvMem(this -> begPointer, (this -> elSize) * (this -> maxSize), ptr);
+
+    for(i = 0; i < size / 4; i++){
+        hash += *(ptr + i);
+        hash += hash << 10;
+        hash ^= hash >> 6;
+    }
+
+    hash += hash << 3;
+    hash ^= hash >> 11;
+    hash += hash << 15;
+
+    free(ptr);
+
+    return hash;    
 }
 
 void Stack::setPoison(uint64_t _poison){   
@@ -57,6 +139,13 @@ void Stack::setPoison(uint64_t _poison){
     for(int i = this -> currentSize; i < maxSize; i++){
         fillPoison(this -> begPointer + i * (this -> elSize));
     }
+
+    this -> stHash = 0;
+    this -> dtHash = 0;
+    uint32_t newStHash = calcStHash();
+    uint32_t newDtHash = calcDtHash();
+    this -> stHash = newStHash;
+    this -> dtHash = newDtHash;
 }
 
 Stack::~Stack(){
@@ -84,8 +173,14 @@ void Stack::pop(void* ptr){
     }
     else throw EMPTYPOP;    
 
-    this  -> checkStack();
+    this -> stHash = 0;
+    this -> dtHash = 0;
+    uint32_t newStHash = calcStHash();
+    uint32_t newDtHash = calcDtHash();
+    this -> stHash = newStHash;
+    this -> dtHash = newDtHash;
 
+    this -> checkStack();
 }
 
 void Stack::push(void* ptr){
@@ -112,20 +207,28 @@ void Stack::push(void* ptr){
 
     (this -> currentSize)++;
 
-    this -> checkStack();
+    this -> stHash = 0;
+    this -> dtHash = 0;
+    uint32_t newStHash = calcStHash();
+    uint32_t newDtHash = calcDtHash();
+    this -> stHash = newStHash;
+    this -> dtHash = newDtHash;
 
+    this -> checkStack();
 }
 
 int Stack::decodeErr(int err){
     switch( err ) {
             case BADPTR:     printf("STACK ERROR[%d]: Pointer on stack beginning not initialized or NULL. Stack might have been deleted.\n", BADPTR); break;
-            case BADCURSZ:   printf("STACK ERROR[%d]: Current stack size (number of elements) exceeds max size\n", BADCURSZ); break;
+            case BADCURSZ:   printf("STACK ERROR[%d]: Current stack size (number of elements) exceeds max size or is below zero\n", BADCURSZ); break;
             case BADMAXSZ:   printf("STACK ERROR[%d]: Max stack size (max number of elements) below or equals zero;\n", BADMAXSZ); break;
             case EMPTYPOP:   printf("STACK ERROR[%d]: Pop was called on an empty stack\n", EMPTYPOP); break;
-            case CANST1:     printf("STACK ERROR[%d]: First canary of the stack data was corrupted\n", CANST1); break;
-            case CANST2:     printf("STACK ERROR[%d]: Second canary of the stack data was corrupted\n", CANST2); break;
+            case CANST1:     printf("STACK ERROR[%d]: First canary of the stack stats was corrupted\n", CANST1); break;
+            case CANST2:     printf("STACK ERROR[%d]: Second canary of the stack stats was corrupted\n", CANST2); break;
             case CANVALS1:   printf("STACK ERROR[%d]: First canary of the actual stack contents was corrupted\n", CANVALS1); break;
             case CANVALS2:   printf("STACK ERROR[%d]: Second canary of the actual stack contents was corrupted\n", CANVALS2); break;
+            case WRSTHASH:   printf("STACK ERROR[%d]: Stack stats hash doesn't match stored hash\n", WRSTHASH); break; 
+            case WRDTHASH:   printf("STACK ERROR[%d]: Stack data hash doesn't match stored hash\n", WRDTHASH); break;
             default:         printf("You've caught an unknown exception. Seems like it was not generated by the stack\n"); return 1; break;
     }
 
@@ -133,7 +236,7 @@ int Stack::decodeErr(int err){
 }
 
 void Stack::dump(){
-    this -> checkStack();
+    //this -> checkStack();
         
     printf("---------------------Stack dump---------------------\n");
     printf("Stack dump\n");
@@ -159,14 +262,23 @@ void Stack::dump(){
 }
 
 void Stack::checkStack(){
-    if( (this -> begPointer == (void*) -1) || (this -> begPointer == NULL) ) throw BADPTR;
+    uint32_t oldDtHash = this -> dtHash;
+    this -> dtHash = 0;
+    uint32_t oldStHash = this -> stHash;
+    this -> stHash = 0;
+
+    if( oldStHash != calcStHash() ) throw WRSTHASH;
+    else if( oldDtHash != calcDtHash() ) throw WRDTHASH;
+    else if( (this -> begPointer == (void*) -1) || (this -> begPointer == NULL) ) throw BADPTR;
     else if( *(uint64_t*)(this -> begPointer - 8) != canaryVal ) throw CANVALS1;
     else if( *(uint64_t*)(this -> begPointer + (this -> elSize) * (this -> maxSize) + (8 - (((this -> elSize) * (this -> maxSize)) % 8))) != canaryVal) throw CANVALS2;
-    else if( this -> canaryStat1 != canaryVal ) throw CANST1;
     else if( this -> canaryStat1 != canaryVal ) throw CANST1;
     else if( this -> canaryStat2 != canaryVal ) throw CANST2;
     else if( (this -> currentSize < 0) || (this -> currentSize > this -> maxSize) ) throw BADCURSZ;
     else if( this -> maxSize <= 0 ) throw BADMAXSZ;
+    
+    this -> dtHash = oldDtHash;
+    this -> stHash = oldStHash;
 }
 
 int Stack::checkPoison(void* ptr){
@@ -183,7 +295,23 @@ void Stack::fillPoison(void* ptr){
     }
 }
 
+int decodeStackErr(int err){
+    switch( err ) {
+            case BADPTR:     printf("STACK ERROR[%d]: Pointer on stack beginning not initialized or NULL. Stack might have been deleted.\n", BADPTR); break;
+            case BADCURSZ:   printf("STACK ERROR[%d]: Current stack size (number of elements) exceeds max size or is below zero\n", BADCURSZ); break;
+            case BADMAXSZ:   printf("STACK ERROR[%d]: Max stack size (max number of elements) below or equals zero;\n", BADMAXSZ); break;
+            case EMPTYPOP:   printf("STACK ERROR[%d]: Pop was called on an empty stack\n", EMPTYPOP); break;
+            case CANST1:     printf("STACK ERROR[%d]: First canary of the stack stats was corrupted\n", CANST1); break;
+            case CANST2:     printf("STACK ERROR[%d]: Second canary of the stack stats was corrupted\n", CANST2); break;
+            case CANVALS1:   printf("STACK ERROR[%d]: First canary of the actual stack contents was corrupted\n", CANVALS1); break;
+            case CANVALS2:   printf("STACK ERROR[%d]: Second canary of the actual stack contents was corrupted\n", CANVALS2); break;
+            case WRSTHASH:   printf("STACK ERROR[%d]: Stack stats hash doesn't match stored hash\n", WRSTHASH); break; 
+            case WRDTHASH:   printf("STACK ERROR[%d]: Stack data hash doesn't match stored hash\n", WRDTHASH); break;
+            default:         printf("You've caught an unknown exception. Seems like it was not generated by the stack\n"); return 1; break;
+    }
 
+    return 0;
+}
 
 
 
