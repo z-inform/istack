@@ -236,7 +236,7 @@ int Stack::decodeErr(int err){
 }
 
 void Stack::dump(){
-    //this -> checkStack();
+    this -> checkStack();
         
     printf("---------------------Stack dump---------------------\n");
     printf("Stack dump\n");
