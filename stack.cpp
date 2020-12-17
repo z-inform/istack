@@ -92,6 +92,30 @@ Stack& Stack::operator=(Stack& arg){
     return *this;
 }
 
+Stack::Stack(Stack& arg):
+    canaryStat1(arg.canaryStat1),
+    begPointer(nullptr),
+    elSize(arg.elSize),
+    currentSize(arg.currentSize),
+    maxSize(arg.maxSize),
+    stHash(0),
+    dtHash(0),
+    poison(arg.poison),
+    elDump(arg.elDump),
+    canaryStat2(arg.canaryStat2) {
+        begPointer = malloc(arg.maxSize * arg.elSize + 16 + (8 - (arg.maxSize * arg.elSize) % 8));
+        if(begPointer == NULL) throw BADPTR;
+        else{
+            arg.mvMem(arg.begPointer - 8, arg.maxSize * arg.elSize + 16 + (8 - (arg.maxSize * arg.elSize) % 4), begPointer);
+            begPointer += 8;
+            uint32_t newStHash = calcStHash();
+            uint32_t newDtHash = calcDtHash();
+            stHash = newStHash;
+            dtHash = newDtHash;
+        }
+}
+
+
 void Stack::mvMem(void* src, int size, void* dst){
     for(int i = 0; i < size; i++){
         *( (uint8_t*) dst + i) = *( (uint8_t*) src + i);

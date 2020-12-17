@@ -29,6 +29,7 @@ class Stack{
 
     Stack(int _elSize);
     Stack(int _elSize, int _maxSize);
+    Stack(Stack& arg);
     ~Stack();
     Stack& operator=(Stack& arg);
 
