@@ -14,6 +14,7 @@ class Stack{
     uint32_t stHash;
     uint32_t dtHash;
     uint64_t poison;
+    void (*elDump)(void*);
     uint64_t canaryStat2;
 
     int checkPoison(void* ptr);
@@ -22,6 +23,7 @@ class Stack{
     uint32_t calcStHash();
     uint32_t calcDtHash();
     void mvMem(void* src, int size, void* dst); 
+    void hexPrint(void* ptr);
     
     public:
 
@@ -32,6 +34,7 @@ class Stack{
 
     void dump();
     void setPoison(uint64_t _poison);
+    void setPrint(void (*print)(void*));
     void checkStack();
     int decodeErr(int err);
     void push(void* ptr);

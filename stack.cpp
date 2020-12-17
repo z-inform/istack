@@ -25,6 +25,7 @@ Stack::Stack(int _elSize):
     stHash(0),
     dtHash(0),
     poison(0xEEEEEEEEEEEEEEEE),
+    elDump(nullptr),
     canaryStat2(canaryVal) {
         begPointer = malloc( (16 + _elSize) + (8 - _elSize % 8));
         if( begPointer == nullptr ){
@@ -50,6 +51,7 @@ Stack::Stack(int _elSize, int _maxSize):
     stHash(0),
     dtHash(0),
     poison(0xEEEEEEEEEEEEEEEE),
+    elDump(nullptr),
     canaryStat2(canaryVal) {
         begPointer = malloc(_maxSize * _elSize + 16 + (8 - (_maxSize * _elSize) % 8));
         if( begPointer == nullptr ){
@@ -78,6 +80,7 @@ Stack& Stack::operator=(Stack& arg){
         currentSize = arg.currentSize;
         maxSize = arg.maxSize;
         poison = arg.poison;
+        elDump = arg.elDump;
         canaryStat2 = arg.canaryStat2;
         stHash = 0;
         dtHash = 0;
@@ -98,7 +101,7 @@ void Stack::mvMem(void* src, int size, void* dst){
 uint32_t Stack::calcStHash(){
     uint32_t hash = 0;
     int i = 0;
-    int size = sizeof(this -> begPointer) + sizeof(this -> elSize) + sizeof(this -> maxSize) + sizeof(this -> stHash) + sizeof(this -> dtHash) + sizeof(this -> poison); 
+    int size = sizeof(this -> begPointer) + sizeof(this -> elSize) + sizeof(this -> maxSize) + sizeof(this -> stHash) + sizeof(this -> dtHash) + sizeof(this -> poison) + sizeof(this -> elDump); 
     size += 4 - (size % 4); 
     uint32_t* mvPtr = (uint32_t*) calloc(1, size);
     uint8_t* ptr = (uint8_t*) mvPtr;
@@ -116,6 +119,8 @@ uint32_t Stack::calcStHash(){
     mvMem(&(this -> dtHash), sizeof(this -> dtHash), ptr);
     ptr += sizeof(this -> dtHash);
     mvMem(&(this -> poison), sizeof(this -> poison), ptr);
+    ptr += sizeof(this -> poison);
+    mvMem(&(this -> elDump), sizeof(this -> elDump), ptr);
 
 
 
@@ -260,6 +265,9 @@ int Stack::decodeErr(int err){
 
 void Stack::dump(){
     this -> checkStack();
+
+    void (*print)(void*) = nullptr;
+    if( this -> elDump != nullptr) print = this -> elDump;
         
     printf("---------------------Stack dump---------------------\n");
     printf("Stack dump\n");
@@ -273,15 +281,34 @@ void Stack::dump(){
     for( int i = 0; i < (this -> maxSize); i++){ 
         if( i == (this -> currentSize) ) printf("cur -> ");
         printf("\t[%d]:\t", i);
-        for(int k = 0; k < (this -> elSize); k++){
-            uint8_t val = *( (uint8_t*) this -> begPointer + i*(this -> elSize) + k); 
-            if( val <= 0xF ) printf("0");
-            printf("%X ", val);
-        }
-        if( checkPoison((this -> begPointer) + i*(this -> elSize)) == 1  ) printf(" : POISON\n");
+        if( print == nullptr ) hexPrint(this -> begPointer + i * (this -> elSize));
+        else print(this -> begPointer + i * (this -> elSize));
+        if( checkPoison((this -> begPointer) + i * (this -> elSize)) == 1  ) printf(" : POISON\n");
         else printf("\n");    
     }
     printf("----------------------------------------------------\n");
+}
+
+void Stack::hexPrint(void* ptr){
+    for(int k = 0; k < (this -> elSize); k++){
+        uint8_t val = *( (uint8_t*) ptr + k); 
+        if( val <= 0xF ) printf("0");
+        printf("%X ", val);
+    }
+}
+
+void Stack::setPrint(void (*print)(void*)){
+    this -> checkStack();
+
+    this -> elDump = print;
+    this -> stHash = 0;
+    this -> dtHash = 0;
+    uint32_t newStHash = calcStHash();
+    uint32_t newDtHash = calcDtHash();
+    this -> stHash = newStHash;
+    this -> dtHash = newDtHash;
+
+    this -> checkStack();
 }
 
 void Stack::checkStack(){
